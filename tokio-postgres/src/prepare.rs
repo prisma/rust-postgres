@@ -94,7 +94,7 @@ pub async fn prepare(
     if let Some(row_description) = row_description {
         let mut it = row_description.fields();
         while let Some(field) = it.next().map_err(Error::parse)? {
-            let type_ = get_type(client, field.type_oid()).await?;
+            let type_ = get_type2(client, field.type_oid()).await?;
             let column = Column {
                 name: field.name().to_string(),
                 table_oid: Some(field.table_oid()).filter(|n| *n != 0),
@@ -131,7 +131,7 @@ fn encode(client: &InnerClient, name: &str, query: &str, types: &[Type]) -> Resu
     })
 }
 
-pub(crate) async fn get_type(client: &Arc<InnerClient>, oid: Oid) -> Result<Type, Error> {
+pub(crate) async fn get_type2(client: &Arc<InnerClient>, oid: Oid) -> Result<Type, Error> {
     if let Some(type_) = Type::from_oid(oid) {
         return Ok(type_);
     }
@@ -162,6 +162,61 @@ pub(crate) async fn get_type(client: &Arc<InnerClient>, oid: Oid) -> Result<Type
         "MADE A TYPE QUERY {:?}",
         (name, type_, elem_oid, rngsubtype, basetype, schema, relid)
     );
+
+    let kind = if type_ == b'e' as i8 {
+        // Note: Quaint is not using the variants information at any time.
+        // Therefore, we're saving a roundtrip per enums by not fetching that information anymore.
+        Kind::Enum
+    } else if type_ == b'p' as i8 {
+        Kind::Pseudo
+    } else if basetype != 0 {
+        let type_ = get_type_rec(client, basetype).await?;
+        Kind::Domain(type_)
+    } else if elem_oid != 0 {
+        let type_ = get_type_rec(client, elem_oid).await?;
+        Kind::Array(type_)
+    } else if relid != 0 {
+        let fields = get_composite_fields(client, relid).await?;
+        Kind::Composite(fields)
+    } else if let Some(rngsubtype) = rngsubtype {
+        let type_ = get_type_rec(client, rngsubtype).await?;
+        Kind::Range(type_)
+    } else {
+        Kind::Simple
+    };
+
+    let type_ = Type::new(name, oid, kind, schema);
+    client.set_type(oid, &type_);
+
+    Ok(type_)
+}
+
+pub(crate) async fn get_type(client: &Arc<InnerClient>, oid: Oid) -> Result<Type, Error> {
+    if let Some(type_) = Type::from_oid(oid) {
+        return Ok(type_);
+    }
+
+    if let Some(type_) = client.type_(oid) {
+        return Ok(type_);
+    }
+
+    let stmt = typeinfo_statement(client).await?;
+
+    let rows = query::query(client, stmt, slice_iter(&[&oid])).await?;
+    pin_mut!(rows);
+
+    let row = match rows.try_next().await? {
+        Some(row) => row,
+        None => return Err(Error::unexpected_message()),
+    };
+
+    let name: String = row.try_get(0)?;
+    let type_: i8 = row.try_get(1)?;
+    let elem_oid: Oid = row.try_get(2)?;
+    let rngsubtype: Option<Oid> = row.try_get(3)?;
+    let basetype: Oid = row.try_get(4)?;
+    let schema: String = row.try_get(5)?;
+    let relid: Oid = row.try_get(6)?;
 
     let kind = if type_ == b'e' as i8 {
         // Note: Quaint is not using the variants information at any time.
