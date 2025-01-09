@@ -158,6 +158,11 @@ pub(crate) async fn get_type(client: &Arc<InnerClient>, oid: Oid) -> Result<Type
     let schema: String = row.try_get(5)?;
     let relid: Oid = row.try_get(6)?;
 
+    panic!(
+        "MADE A TYPE QUERY {:?}",
+        (name, type_, elem_oid, rngsubtype, basetype, schema, relid)
+    );
+
     let kind = if type_ == b'e' as i8 {
         // Note: Quaint is not using the variants information at any time.
         // Therefore, we're saving a roundtrip per enums by not fetching that information anymore.
