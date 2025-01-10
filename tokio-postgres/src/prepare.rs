@@ -17,18 +17,15 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
 const TYPEINFO_QUERY: &str = "\
-SELECT t.typname, t.typtype, t.typelem, r.rngsubtype, t.typbasetype, n.nspname, t.typrelid
+SELECT t.typname, t.typtype, t.typelem, t.typbasetype, t.typrelid
 FROM pg_catalog.pg_type t
-LEFT OUTER JOIN pg_catalog.pg_range r ON r.rngtypid = t.oid
-INNER JOIN pg_catalog.pg_namespace n ON t.typnamespace = n.oid
 WHERE t.oid = $1
 ";
 
 // Range types weren't added until Postgres 9.2, so pg_range may not exist
 const TYPEINFO_FALLBACK_QUERY: &str = "\
-SELECT t.typname, t.typtype, t.typelem, NULL::OID, t.typbasetype, n.nspname, t.typrelid
+SELECT t.typname, t.typtype, t.typelem, t.typbasetype, t.typrelid
 FROM pg_catalog.pg_type t
-INNER JOIN pg_catalog.pg_namespace n ON t.typnamespace = n.oid
 WHERE t.oid = $1
 ";
 
@@ -153,10 +150,8 @@ pub(crate) async fn get_type(client: &Arc<InnerClient>, oid: Oid) -> Result<Type
     let name: String = row.try_get(0)?;
     let type_: i8 = row.try_get(1)?;
     let elem_oid: Oid = row.try_get(2)?;
-    let rngsubtype: Option<Oid> = row.try_get(3)?;
-    let basetype: Oid = row.try_get(4)?;
-    let schema: String = row.try_get(5)?;
-    let relid: Oid = row.try_get(6)?;
+    let basetype: Oid = row.try_get(3)?;
+    let relid: Oid = row.try_get(4)?;
 
     let kind = if type_ == b'e' as i8 {
         // Note: Quaint is not using the variants information at any time.
@@ -173,14 +168,11 @@ pub(crate) async fn get_type(client: &Arc<InnerClient>, oid: Oid) -> Result<Type
     } else if relid != 0 {
         let fields = get_composite_fields(client, relid).await?;
         Kind::Composite(fields)
-    } else if let Some(rngsubtype) = rngsubtype {
-        let type_ = get_type_rec(client, rngsubtype).await?;
-        Kind::Range(type_)
     } else {
-        Kind::Simple
+        return Err(Error::unsupported_type());
     };
 
-    let type_ = Type::new(name, oid, kind, schema);
+    let type_ = Type::new(name, oid, kind);
     client.set_type(oid, &type_);
 
     Ok(type_)
