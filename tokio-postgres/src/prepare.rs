@@ -168,6 +168,8 @@ pub(crate) async fn get_type(client: &Arc<InnerClient>, oid: Oid) -> Result<Type
     } else if relid != 0 {
         let fields = get_composite_fields(client, relid).await?;
         Kind::Composite(fields)
+    } else if type_ == b'b' as i8 {
+        Kind::Simple
     } else {
         return Err(Error::unsupported_type());
     };
