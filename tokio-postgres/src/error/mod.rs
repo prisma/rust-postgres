@@ -357,6 +357,7 @@ enum Kind {
     #[cfg(feature = "runtime")]
     Connect,
     Timeout,
+    UnsupportedType,
 }
 
 struct ErrorInner {
@@ -399,6 +400,7 @@ impl fmt::Display for Error {
             #[cfg(feature = "runtime")]
             Kind::Connect => fmt.write_str("error connecting to server")?,
             Kind::Timeout => fmt.write_str("timeout waiting for server")?,
+            Kind::UnsupportedType => fmt.write_str("unsupported type")?,
         };
         if let Some(ref cause) = self.0.cause {
             write!(fmt, ": {}", cause)?;
@@ -448,6 +450,10 @@ impl Error {
 
     pub(crate) fn unexpected_message() -> Error {
         Error::new(Kind::UnexpectedMessage, None)
+    }
+
+    pub(crate) fn unsupported_type() -> Error {
+        Error::new(Kind::UnsupportedType, None)
     }
 
     #[allow(clippy::needless_pass_by_value)]

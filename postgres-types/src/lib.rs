@@ -313,23 +313,14 @@ impl fmt::Debug for Type {
 
 impl fmt::Display for Type {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.schema() {
-            "public" | "pg_catalog" => {}
-            schema => write!(fmt, "{}.", schema)?,
-        }
         fmt.write_str(self.name())
     }
 }
 
 impl Type {
     /// Creates a new `Type`.
-    pub fn new(name: String, oid: Oid, kind: Kind, schema: String) -> Type {
-        Type(Inner::Other(Arc::new(Other {
-            name,
-            oid,
-            kind,
-            schema,
-        })))
+    pub fn new(name: String, oid: Oid, kind: Kind) -> Type {
+        Type(Inner::Other(Arc::new(Other { name, oid, kind })))
     }
 
     /// Returns the `Type` corresponding to the provided `Oid` if it
@@ -346,14 +337,6 @@ impl Type {
     /// Returns the kind of this type.
     pub fn kind(&self) -> &Kind {
         self.0.kind()
-    }
-
-    /// Returns the schema of this type.
-    pub fn schema(&self) -> &str {
-        match self.0 {
-            Inner::Other(ref u) => &u.schema,
-            _ => "pg_catalog",
-        }
     }
 
     /// Returns the name of this type.

@@ -8,7 +8,6 @@ pub struct Other {
     pub name: String,
     pub oid: Oid,
     pub kind: Kind,
-    pub schema: String,
 }
 
 #[derive(PartialEq, Eq, Clone, Debug, Hash)]
