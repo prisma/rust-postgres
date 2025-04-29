@@ -1,6 +1,6 @@
 [package]
 name = "postgres"
-version = "0.19.8"
+version = "0.19.9"
 authors = ["Steven Fackler <sfackler@gmail.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
@@ -24,6 +24,8 @@ circle-ci = { repository = "sfackler/rust-postgres" }
 array-impls = ["tokio-postgres/array-impls"]
 with-bit-vec-0_6 = ["tokio-postgres/with-bit-vec-0_6"]
 with-chrono-0_4 = ["tokio-postgres/with-chrono-0_4"]
+with-cidr-0_2 = ["tokio-postgres/with-cidr-0_2"]
+with-cidr-0_3 = ["tokio-postgres/with-cidr-0_3"]
 with-eui48-0_4 = ["tokio-postgres/with-eui48-0_4"]
 with-eui48-1 = ["tokio-postgres/with-eui48-1"]
 with-geo-types-0_6 = ["tokio-postgres/with-geo-types-0_6"]
@@ -41,7 +43,7 @@ bytes = "1.0"
 fallible-iterator = "0.2"
 futures-util = { version = "0.3.14", features = ["sink"] }
 log = "0.4"
-tokio-postgres = { version = "0.7.11", path = "../tokio-postgres" }
+tokio-postgres = { version = "0.7.13", path = "../tokio-postgres" }
 tokio = { version = "1.0", features = ["rt", "time"] }
 
 [dev-dependencies]

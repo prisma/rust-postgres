@@ -89,7 +89,14 @@ where
     S: AsyncRead + AsyncWrite + Unpin,
     T: TlsConnect<S>,
 {
-    let stream = connect_tls(stream, config.ssl_mode, tls, has_hostname).await?;
+    let stream = connect_tls(
+        stream,
+        config.ssl_mode,
+        config.ssl_negotiation,
+        tls,
+        has_hostname,
+    )
+    .await?;
 
     let mut stream = StartupStream {
         inner: Framed::new(stream, PostgresCodec),
@@ -110,6 +117,7 @@ where
     let client = Client::new(
         sender,
         config.ssl_mode,
+        config.ssl_negotiation,
         process_id,
         secret_key,
         config.pgbouncer_mode,
