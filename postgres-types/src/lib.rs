@@ -264,6 +264,10 @@ where
 
 #[cfg(feature = "with-bit-vec-0_6")]
 mod bit_vec_06;
+#[cfg(feature = "with-bit-vec-0_7")]
+mod bit_vec_07;
+#[cfg(feature = "with-bit-vec-0_8")]
+mod bit_vec_08;
 #[cfg(feature = "with-chrono-0_4")]
 mod chrono_04;
 #[cfg(feature = "with-cidr-0_2")]
@@ -280,22 +284,24 @@ mod geo_types_06;
 mod geo_types_07;
 #[cfg(feature = "with-jiff-0_1")]
 mod jiff_01;
+#[cfg(feature = "with-jiff-0_2")]
+mod jiff_02;
 #[cfg(feature = "with-serde_json-1")]
 mod serde_json_1;
 #[cfg(feature = "with-smol_str-01")]
 mod smol_str_01;
 #[cfg(feature = "with-time-0_2")]
 mod time_02;
+
+// The time::{date, time} macros produce compile errors if the crate package is renamed.
+#[cfg(feature = "with-time-0_2")]
+extern crate time_02 as time;
 #[cfg(feature = "with-time-0_3")]
 mod time_03;
 #[cfg(feature = "with-uuid-0_8")]
 mod uuid_08;
 #[cfg(feature = "with-uuid-1")]
 mod uuid_1;
-
-// The time::{date, time} macros produce compile errors if the crate package is renamed.
-#[cfg(feature = "with-time-0_2")]
-extern crate time_02 as time;
 
 mod pg_lsn;
 #[doc(hidden)]
@@ -612,16 +618,14 @@ impl<'a, T: FromSql<'a>, const N: usize> FromSql<'a> for [T; N] {
             let v = values
                 .next()?
                 .ok_or_else(|| -> Box<dyn Error + Sync + Send> {
-                    format!("too few elements in array (expected {}, got {})", N, i).into()
+                    format!("too few elements in array (expected {N}, got {i})").into()
                 })?;
             T::from_sql_nullable(member_type, v)
         })?;
         if values.next()?.is_some() {
-            return Err(format!(
-                "excess elements in array (expected {}, got more than that)",
-                N,
-            )
-            .into());
+            return Err(
+                format!("excess elements in array (expected {N}, got more than that)",).into(),
+            );
         }
 
         Ok(out)
@@ -853,6 +857,9 @@ pub enum IsNull {
 /// `ToSql` is implemented for `[u8; N]`, `Vec<T>`, `&[T]`, `Box<[T]>` and `[T; N]`
 /// where `T` implements `ToSql` and `N` is const usize, and corresponds to one-dimensional
 /// Postgres arrays with an index offset of 1.
+/// To make conversion work correctly for `WHERE ... IN` clauses, for example
+/// `WHERE col IN ($1)`, you may instead have to use the construct
+/// `WHERE col = ANY ($1)` which expects an array.
 ///
 /// **Note:** the impl for arrays only exist when the Cargo feature `array-impls`
 /// is enabled.
