@@ -31,37 +31,14 @@ pub fn domain_body(name: &str, field: &syn::Field) -> TokenStream {
     }
 }
 
-pub fn enum_body(name: &str, variants: &[Variant], allow_mismatch: bool) -> TokenStream {
-    let num_variants = variants.len();
-    let variant_names = variants.iter().map(|v| &v.name);
-
+pub fn enum_body(name: &str, _variants: &[Variant], allow_mismatch: bool) -> TokenStream {
     if allow_mismatch {
         quote! {
             type_.name() == #name
         }
     } else {
         quote! {
-            if type_.name() != #name {
-                return false;
-            }
-
-            match *type_.kind() {
-                ::postgres_types::Kind::Enum(ref variants) => {
-                    if variants.len() != #num_variants {
-                        return false;
-                    }
-
-                    variants.iter().all(|v| {
-                        match &**v {
-                            #(
-                                #variant_names => true,
-                            )*
-                            _ => false,
-                        }
-                    })
-                }
-                _ => false,
-            }
+            type_.name() == #name && matches!(*type_.kind(), ::postgres_types::Kind::Enum)
         }
     }
 }
